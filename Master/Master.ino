@@ -32,8 +32,9 @@ void setup() {
 }
 
 void loop() {
-  
+  spiTransfer(0x00); // dummy transfer
   byte humData= spiTransfer(0x02);
+  spiTransfer(0x00); // dummy transfer
   byte tempData = spiTransfer(0x01);
   temperature = tempData;
   humidity = humData;
