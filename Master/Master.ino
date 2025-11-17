@@ -11,28 +11,21 @@ volatile int tempThreshold = 25;
 volatile float temperature = 0, humidity = 0;
 
 void setup() {
-  // ---------------- SPI Master setup ----------------
-  // Set MOSI, SCK, SS as output
+  
   DDRB |= (1 << PB3) | (1 << PB5) | (1 << PB2);
-  // MISO input
   DDRB &= ~(1 << PB4);
 
-  // Deselect slave (SS high)
   PORTB |= (1 << PB2);
 
-  // Enable SPI, Master mode, clock = fosc/16
   SPCR = (1 << SPE) | (1 << MSTR) | (1 << SPR0);
 
-  // ---------------- LED setup ----------------
-  DDRD |= (1 << PD7); // LED output (pin 7)
+  
+  DDRD |= (1 << PD7); //pin 7
 
-  // ---------------- Buttons setup ----------------
-  DDRD &= ~((1 << PD2) | (1 << PD3)); // Inputs
-  PORTD |= (1 << PD2) | (1 << PD3);   // Pull-up
-
-  // ---------------- Interrupts ----------------
-  EICRA |= (1 << ISC01) | (1 << ISC00); // INT0 rising edge
-  EICRA |= (1 << ISC11) | (1 << ISC10); // INT1 rising edge
+  DDRD &= ~((1 << PD2) | (1 << PD3)); 
+  PORTD |= (1 << PD2) | (1 << PD3);   
+  EICRA |= (1 << ISC01) | (1 << ISC00); // INT0 
+  EICRA |= (1 << ISC11) | (1 << ISC10); // INT1 
   EIMSK |= (1 << INT0) | (1 << INT1);
 
   Serial.begin(9600);
@@ -54,7 +47,6 @@ void loop() {
   Serial.print("C  Heater=");
   Serial.println((PIND & (1 << PD7)) ? "ON" : "OFF");
 
-  // Control LED încălzire (PD7)
   if (temperature < tempThreshold)
     PORTD |= (1 << PD7);
   else
@@ -66,19 +58,19 @@ void loop() {
 byte spiTransfer(byte dataOut) {
   PORTB &= ~(1 << PB2); // SS low
   SPDR = dataOut;       // send data
-  while (!(SPSR & (1 << SPIF))); // wait
+  while (!(SPSR & (1 << SPIF))); 
   byte dataIn = SPDR;
   PORTB |= (1 << PB2); // SS high
   delay(100);
   return dataIn;
 }
 
-// ISR pentru creștere prag
+// ISR pentru creștere prag-temperatura
 ISR(INT0_vect) {
   tempThreshold++;
 }
 
-// ISR pentru scădere prag
+// ISR pentru scădere prag-temperatura
 ISR(INT1_vect) {
   tempThreshold--;
 }

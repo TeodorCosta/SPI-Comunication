@@ -10,7 +10,6 @@
 
   ISR(SPI_STC_vect) {
     command = SPDR;
-    // Simulare variație mică
     fakeTemp += random(-1, 2) * 0.3;
     fakeHum += random(-1, 2);
 
@@ -19,15 +18,12 @@
     else if (command == 0x02)
       dataToSend = (byte)fakeHum;
 
-    SPDR = dataToSend;  // Răspuns către master
+    SPDR = dataToSend;
   }
 
   void setup() {
-    // MISO output, MOSI/SCK/SS input
     DDRB |= (1 << PB4);
     DDRB &= ~((1 << PB3) | (1 << PB5) | (1 << PB2));
-
-    // Enable SPI in Slave mode + interrupt
     SPCR = (1 << SPE) | (1 << SPIE);
     
     Serial.begin(9600);
