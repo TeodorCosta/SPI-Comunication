@@ -80,3 +80,41 @@ The Master reads measurements from the Slave, displays them on the LCD, and acti
 - **Pin D7** controls heater (or LED/relay)
 
 ---
+
+## 📟 LCD Display Format
+
+**Line 1:**
+T:23C H:45%
+**Line 2:**
+
+---
+
+## 📂 Project Structure
+
+/project
+│── MASTER/
+│ └── master.ino
+│
+│── SLAVE/
+│ └── slave.ino
+│
+└── README.md
+
+---
+
+## 🚀 Operation
+
+1. Power both Master and Slave boards.
+2. Slave reads sensor and waits for SPI requests.
+3. Master:
+   - Sends command `0x01` → reads temperature  
+   - Sends command `0x02` → reads humidity  
+4. LCD updates values in real time.
+5. Buttons:
+   - **UP** → increase threshold  
+   - **DOWN** → decrease threshold  
+6. Heater turns ON/OFF based on:
+if temperature < threshold → heater ON
+else → heater OFF
+
+---
