@@ -91,14 +91,12 @@ T:23C H:45%
 
 ## 📂 Project Structure
 
-/project
-│── MASTER/
-│ └── master.ino
-│
-│── SLAVE/
-│ └── slave.ino
-│
-└── README.md
+project/
+    MASTER/
+        master_spi_lcd.ino
+    SLAVE/
+        slave_spi_sensor.ino
+    README.md
 
 ---
 
