@@ -25,15 +25,8 @@
     DDRB |= (1 << PB4);
     DDRB &= ~((1 << PB3) | (1 << PB5) | (1 << PB2));
     SPCR = (1 << SPE) | (1 << SPIE);
-    
-    Serial.begin(9600);
-    Serial.println("Senzor SPI (Slave) activ");
   }
 
   void loop() {
-    Serial.print("Simulat: T=");
-    Serial.print(fakeTemp);
-    Serial.print("C  H=");
-    Serial.println(fakeHum);
-    delay(1000);
+
   }
