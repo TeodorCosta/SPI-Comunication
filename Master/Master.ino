@@ -37,20 +37,24 @@ void setup() {
 }
 
 void loop() {
-  byte humCommand = spiTransfer(0x02); // send command
-byte humData = spiTransfer(0x00);    // read response
+  byte humCommand = spiTransfer(0x82); // send command
+  byte humData = spiTransfer(0x00);    // read response
 
-byte tempCommand = spiTransfer(0x01); // send command
-byte tempData = spiTransfer(0x00);    // read response
+  byte tempCommand = spiTransfer(0x81); // send command
+  byte tempData = spiTransfer(0x00);    // read response
 
   temperature = tempData;
   humidity = humData;
 
   // Heater control
-  if (temperature < tempThreshold)
-    PORTD |= (1 << PD7); 
-  else
-    PORTD &= ~(1 << PD7);
+  if (temperature < tempThreshold) {
+    PORTD |= (1 << PD7);
+    byte ThresholdByte = tempThreshold;
+    spiTransfer(ThresholdByte);
+  }
+  else {PORTD &= ~(1 << PD7);
+    spiTransfer(0x83);
+  }
 
   lcd.setCursor(0, 0);
   lcd.print("T:");
