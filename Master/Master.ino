@@ -31,6 +31,8 @@ void setup() {
   EICRA |= (1 << ISC11) | (1 << ISC10);
   EIMSK |= (1 << INT0) | (1 << INT1);
 
+  timer1_init();
+
   lcd.init();
   lcd.backlight();
   lcd.clear();
@@ -79,9 +81,16 @@ byte spiTransfer(byte dataOut) {
   while (!(SPSR & (1 << SPIF)));
   byte dataIn = SPDR;
   PORTB |= (1 << PB2);
-  delay(50);
+  delay50ms_timer1();
   return dataIn;
 }
-
+void timer1_init() {
+  TCCR1A = 0;                   
+  TCCR1B = (1 << CS11) | (1 << CS10); // prescaler 64
+}
+void delay50ms_timer1() {
+  TCNT1 = 0;                 
+  while (TCNT1 < 12500);          // wait 50 ms
+}
 ISR(INT0_vect) { tempThreshold++; }
 ISR(INT1_vect) { tempThreshold--; }

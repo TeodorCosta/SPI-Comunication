@@ -6,9 +6,19 @@
   volatile byte command = 0;
   volatile byte dataToSend = 0;
   volatile uint8_t setpoint = 10;
+
   float fakeTemp = 22.0;
+  float lastTemp =0;
   float fakeHum = 55.0;
+
+  uint16_t humMsAccum = 0;
+  const uint16_t HUM_UPDATE_MS = 200;
+  float humRateUp   = 6.0;  // %RH per second when temp decreases
+  float humRateDown = 15.0; // %RH per second when temp increases
+  float humDeadband = 0.01; // degC
+
   int heaterOFF=1;
+
   // PID state
   float Kp = 10;
   float Ki = 10;
@@ -17,7 +27,7 @@
   float integ = 0.0;
   float prevErr = 0.0;
 
-  volatile uint8_t heaterU = 0; // 0..255 output (for master to read)
+  volatile uint8_t heaterU = 0; // 0..255 output
 
   ISR(SPI_STC_vect) {
     command = SPDR;
@@ -42,15 +52,16 @@
     DDRB |= (1 << PB4);
     DDRB &= ~((1 << PB3) | (1 << PB5) | (1 << PB2));
     SPCR = (1 << SPE) | (1 << SPIE);
+
+    timer1_init();
+    TCNT1 = 0;
   }
 
   void loop() {
     const float dt = 0.15;
 
-    // PID compute
     heaterU = pidCompute(fakeTemp, (float)setpoint, dt);
 
-    // Plant simulation: temperature responds to heaterU
     const float ambient = 21.0;
     float power = heaterU / 255.0;
     
@@ -60,17 +71,34 @@
 
     fakeTemp = fakeTemp + heating - cooling;
     Serial.println(fakeTemp);
-    if (fakeTemp < 10) fakeTemp = 10;
-    if (fakeTemp > 50) fakeTemp = 50;
+    /// time accumulation from Timer1
+    humMsAccum += timer1_elapsed_ms_and_reset();
 
-   
+if (humMsAccum >= HUM_UPDATE_MS) {
+  float dt = humMsAccum / 1000.0;   // seconds since last humidity update
+  humMsAccum = 0;
+
+  float dT = fakeTemp - lastTemp;
+
+  if (dT > humDeadband) {
+    // temp increased => humidity decreases
+    fakeHum -= humRateDown * dt;
+  } 
+  else if (dT < -humDeadband) {
+    // temp decreased => humidity increases
+    fakeHum += humRateUp * dt;
+  }
+
+  if (fakeHum < 20.0) fakeHum = 20.0;
+  if (fakeHum > 90.0) fakeHum = 90.0;
+}
+
+  lastTemp = fakeTemp;
   }
 
   static inline uint8_t pidCompute(float tempNow, float sp, float dt) {
   float err = sp - tempNow;
 
-
-  // only heat if below setpoint
   if (err <= 0) {
     integ = 0;
     prevErr = 0;
@@ -90,3 +118,18 @@
   if (u > 255) u = 255;
   return (uint8_t)u;
 }
+
+static inline void timer1_init() {
+  TCCR1A = 0;                               // normal mode
+  TCCR1B = (1 << CS11) | (1 << CS10);       // prescaler 64
+}
+
+// returns elapsed ms since last call using Timer1 ticks
+static inline uint16_t timer1_elapsed_ms_and_reset() {
+  // 16MHz/64 = 250kHz => 1 tick = 4us
+  // 1ms = 250 ticks
+  uint16_t ticks = TCNT1;
+  TCNT1 = 0;
+  return (uint16_t)(ticks / 250);
+}
+
