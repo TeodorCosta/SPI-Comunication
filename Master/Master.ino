@@ -31,26 +31,32 @@ void setup() {
   EICRA |= (1 << ISC11) | (1 << ISC10);
   EIMSK |= (1 << INT0) | (1 << INT1);
 
+  timer1_init();
+
   lcd.init();
   lcd.backlight();
   lcd.clear();
 }
 
 void loop() {
-  byte humCommand = spiTransfer(0x02); // send command
-byte humData = spiTransfer(0x00);    // read response
+  byte humCommand = spiTransfer(0x82); // send command
+  byte humData = spiTransfer(0x00);    // read response
 
-byte tempCommand = spiTransfer(0x01); // send command
-byte tempData = spiTransfer(0x00);    // read response
+  byte tempCommand = spiTransfer(0x81); // send command
+  byte tempData = spiTransfer(0x00);    // read response
 
   temperature = tempData;
   humidity = humData;
 
   // Heater control
-  if (temperature < tempThreshold)
-    PORTD |= (1 << PD7); 
-  else
-    PORTD &= ~(1 << PD7);
+  if (temperature < tempThreshold) {
+    PORTD |= (1 << PD7);
+    byte ThresholdByte = tempThreshold;
+    spiTransfer(ThresholdByte);
+  }
+  else {PORTD &= ~(1 << PD7);
+    spiTransfer(0x83);
+  }
 
   lcd.setCursor(0, 0);
   lcd.print("T:");
@@ -75,9 +81,16 @@ byte spiTransfer(byte dataOut) {
   while (!(SPSR & (1 << SPIF)));
   byte dataIn = SPDR;
   PORTB |= (1 << PB2);
-  delay(50);
+  delay50ms_timer1();
   return dataIn;
 }
-
+void timer1_init() {
+  TCCR1A = 0;                   
+  TCCR1B = (1 << CS11) | (1 << CS10); // prescaler 64
+}
+void delay50ms_timer1() {
+  TCNT1 = 0;                 
+  while (TCNT1 < 12500);          // wait 50 ms
+}
 ISR(INT0_vect) { tempThreshold++; }
 ISR(INT1_vect) { tempThreshold--; }
