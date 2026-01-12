@@ -36,9 +36,12 @@ void setup() {
   lcd.init();
   lcd.backlight();
   lcd.clear();
+
+  sei();
 }
 
 void loop() {
+  
   byte humCommand = spiTransfer(0x82); // send command
   byte humData = spiTransfer(0x00);    // read response
 

@@ -11,11 +11,14 @@
   float lastTemp =0;
   float fakeHum = 55.0;
 
+  volatile uint8_t tempByte = 22;
+  volatile uint8_t humByte  = 55;
+
   uint16_t humMsAccum = 0;
   const uint16_t HUM_UPDATE_MS = 200;
-  float humRateUp   = 6.0;  // %RH per second when temp decreases
-  float humRateDown = 15.0; // %RH per second when temp increases
-  float humDeadband = 0.01; // degC
+  float humRateUp   = 1.0;  // %RH per second when temp decreases
+  float humRateDown = 6.0; // %RH per second when temp increases
+  float humDeadband = 0.02; // degC
 
   int heaterOFF=1;
 
@@ -39,22 +42,23 @@
       return;
     }
     if (command == 0x81)
-      dataToSend = (byte)fakeTemp;
+      dataToSend = tempByte;
     else if (command == 0x82)
-      dataToSend = (byte)fakeHum;
+      dataToSend = humByte;
     else if (command == 0x83)
       heaterOFF = 1;
     SPDR = dataToSend;
   }
 
   void setup() {
-    Serial.begin(9600);
     DDRB |= (1 << PB4);
     DDRB &= ~((1 << PB3) | (1 << PB5) | (1 << PB2));
     SPCR = (1 << SPE) | (1 << SPIE);
 
     timer1_init();
     TCNT1 = 0;
+
+    sei();
   }
 
   void loop() {
@@ -70,30 +74,35 @@
     float cooling = (fakeTemp - ambient) * 0.005;
 
     fakeTemp = fakeTemp + heating - cooling;
-    Serial.println(fakeTemp);
     /// time accumulation from Timer1
     humMsAccum += timer1_elapsed_ms_and_reset();
 
-if (humMsAccum >= HUM_UPDATE_MS) {
-  float dt = humMsAccum / 1000.0;   // seconds since last humidity update
-  humMsAccum = 0;
+  const float dtHum = 0.10f;
 
-  float dT = fakeTemp - lastTemp;
+float dT = fakeTemp - lastTemp;
 
-  if (dT > humDeadband) {
-    // temp increased => humidity decreases
-    fakeHum -= humRateDown * dt;
-  } 
-  else if (dT < -humDeadband) {
-    // temp decreased => humidity increases
-    fakeHum += humRateUp * dt;
-  }
-
-  if (fakeHum < 20.0) fakeHum = 20.0;
-  if (fakeHum > 90.0) fakeHum = 90.0;
+if (dT > humDeadband) {
+  fakeHum -= humRateDown * dtHum;  // temp up => hum down
+} else if (dT < -humDeadband) {
+  fakeHum += humRateUp * dtHum;    // temp down => hum up
 }
 
+// clamp
+if (fakeHum < 20.0f) fakeHum = 20.0f;
+if (fakeHum > 90.0f) fakeHum = 90.0f;
+
+
   lastTemp = fakeTemp;
+
+  // After computing fakeTemp / fakeHum:
+  uint8_t t = (uint8_t)fakeTemp;
+  uint8_t h = (uint8_t)fakeHum;
+
+  // atomic store (1 byte each, safe)
+  tempByte = t;
+  humByte  = h;
+
+  delay_ms_timer1(100);
   }
 
   static inline uint8_t pidCompute(float tempNow, float sp, float dt) {
@@ -133,3 +142,11 @@ static inline uint16_t timer1_elapsed_ms_and_reset() {
   return (uint16_t)(ticks / 250);
 }
 
+static inline void delay_ms_timer1(uint16_t ms) {
+  // Timer1 already running at prescaler 64
+  // 16MHz / 64 = 250kHz → 1 tick = 4µs
+  while (ms--) {
+    TCNT1 = 0;
+    while (TCNT1 < 250); // 1 ms
+  }
+}
